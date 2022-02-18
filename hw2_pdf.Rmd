@@ -1,11 +1,13 @@
 ---
 title: "HW 2"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
-                      fig.align = TRUE)
+                      fig.align = TRUE,
+                      fig.width = 6,
+                      fig.height = 4)
 ```
 
 # Question 8
