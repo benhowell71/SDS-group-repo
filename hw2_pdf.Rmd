@@ -1,0 +1,65 @@
+---
+title: "HW 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = TRUE)
+```
+
+# Question 8
+
+```{r}
+require(tidyverse)
+require(ISLR2)
+```
+
+##### Creating lm
+```{r}
+df <- Auto
+
+model <- lm(mpg ~ horsepower, data = df)
+
+summary(model)
+```
+
+There is a clear relationship between `horsepower` and `mpg` in the `Auto` dataset. The `horsepower` coefficient of `-0.16` indicates that for every one additional unit of `horsepower` corresponds with less `mpg`. The negative relationship is fairly strong, though it is interesting that it's more of a non-linear relationship at higher `horsepower` values, where the difference between 150 units of `horsepower` and 200 units of `horsepower` is fairly small, whereas the difference between 75 units and 100 units is far more pronounced.                       
+
+```{r}
+new <- data.frame(horsepower = c(98))
+
+pred <- predict(model, newdata = new, interval = "confidence") %>%
+  data.frame()
+```
+
+The predicted `mpg` of a 98 `horsepower` is `r pred$fit`, while the confidence interval ranges from `r pred$lwr` to `r pred$upr`. Below is a plot of `mpg` as a function of `horsepower`, with the least squares regression line plotted over it.                       
+
+```{r}
+# df %>%
+#   ggplot(aes(x = horsepower, y = mpg)) +
+#   geom_point() +
+#   geom_smooth(method = "lm", formula = mpg ~ horsepower) +
+#   theme_minimal() + 
+#   labs(title = "Horsepower vs MPG") +
+#   theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
+
+with(df, plot(horsepower, mpg)) +
+abline(model)
+```
+
+```{r}
+plot(model)
+```
+
+From evaluating the diagnostic plots, it's clear that the linear model is not a good fit for the current data set. The residuals are not evenly or consistently distributed over the distribution of fitted values. For example, the model consistently under predicts low values of `mpg`. The large positive residual shows that the actual values are well above the prediction. A similar phenomenon occurs at higher values too; given the `horsepower vs mpg` and line of best fit plot, the non-linear relationship between the two variables ends up under-predicting values at both extremes.          
+
+
+
+
+
+
+
+
+
+
