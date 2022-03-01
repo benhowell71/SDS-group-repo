@@ -1,7 +1,7 @@
 ---
 title: "SDS 323 -- HW 3"
 author: Ben Howell
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -35,7 +35,7 @@ pairs(df %>%
 
 Well, clearly the best predictor of `mpg01` is going to be `mpg`, but it doesn't make sense to include `mpg` as a variable in a model attempting to predict `mpg01`. Beyond that, it looks like horsepower, weight, displacement, and acceleration may have some impact on `mpg01`.                       
 
-```{r, echo=FALSE, fig.height=5.32, fig.width=8}
+```{r, echo=FALSE, fig.height=5.32, fig.width=8, message=FALSE, warning=FALSE}
 hp <- df %>%
   ggplot() +
   geom_point(aes(x = mpg01, y = horsepower)) +
