@@ -174,7 +174,7 @@ m <- knn_acc %>%
   pull(k)
 ```
 
-We see that the accuracy values are between `r n`% and `r l`%. The highest accuracy rate of `r round(max(knn_acc$accuracy) * 100, digits = 2)`% is achieved at `K` = `r m`.        
+We see that the accuracy values are between `r n`% and `r l`%. The highest accuracy rate of `r round(max(knn_acc$accuracy) * 100, digits = 2)`% is achieved at `K` = `r m`. The accuracy of `r round(max(knn_acc$accuracy) * 100, digits = 2)`% beats the logistic regression's accuracy of `r round(acc * 100, digits = 1)`% by `r round(max(knn_acc$accuracy) * 100, digits = 2) - round(acc * 100, digits = 1)`% points.
 
 
 
