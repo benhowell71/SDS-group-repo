@@ -126,6 +126,8 @@ By running a confusion matrix on the predicted `mpg01` probabilities, we can see
 ```{r}
 require(FNN)
 
+set.seed(123)
+
 mpg_train <- train_data %>%
   dplyr::select(cylinders, displacement, horsepower, weight, acceleration)
 mpg_test <- test_data %>%
@@ -147,7 +149,7 @@ for (z in 1:150) {
   
   knn_acc[[z]] <- k_df
   
-  print(z)
+  # print(z)
 }
 
 knn_acc <- dplyr::bind_rows(knn_acc) %>%
@@ -162,6 +164,18 @@ knn_acc %>%
   theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
 ```
 
-We see that the accuracy values oscillate pretty heavily between 82% and 86%. I suspect that one of the major reasons that the graph is so scattered and up-and-down has to do with the limited testing and training datasets, with only 294 rows in the training dataset.
+```{r}
+n <- floor(min(knn_acc$accuracy, na.rm = TRUE) * 100)
+l <- ceiling(max(knn_acc$accuracy, na.rm = TRUE) * 100)
+
+m <- knn_acc %>% 
+  dplyr::filter(accuracy == max(accuracy, na.rm = TRUE)) %>% 
+  dplyr::filter(k == max(k)) %>% 
+  pull(k)
+```
+
+We see that the accuracy values are between `r n`% and `r l`%. The highest accuracy rate of `r round(max(knn_acc$accuracy) * 100, digits = 2)`% is achieved at `K` = `r m`.        
+
+
 
 
