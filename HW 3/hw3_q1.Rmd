@@ -1,0 +1,167 @@
+---
+title: "SDS 323 -- HW 3"
+author: Ben Howell
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = TRUE,
+                      fig.width = 6,
+                      fig.height = 4)
+```
+
+# Question 14 (A, B, C, F, H)
+
+```{r, message=FALSE, warning=FALSE}
+require(tidyverse)
+require(ISLR2)
+```
+
+```{r Part A}
+head(Auto)
+
+df <- Auto %>%
+  dplyr::mutate(mpg01 = ifelse(mpg >= median(Auto$mpg, na.rm = TRUE), 1, 0))
+
+# hist(df$mpg01)
+```
+
+```{r Part B, fig.height=5.32, fig.width=8, fig.align='center'}
+pairs(df %>%
+        dplyr::select(mpg01, mpg, cylinders, displacement, 
+                      horsepower, weight, acceleration, year, origin))
+```
+
+Well, clearly the best predictor of `mpg01` is going to be `mpg`, but it doesn't make sense to include `mpg` as a variable in a model attempting to predict `mpg01`. Beyond that, it looks like horsepower, weight, displacement, and acceleration may have some impact on `mpg01`.                       
+
+```{r, echo=FALSE, fig.height=5.32, fig.width=8}
+hp <- df %>%
+  ggplot() +
+  geom_point(aes(x = mpg01, y = horsepower)) +
+  labs(title = "mpg01 vs horsepower") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
+
+dp <- df %>%
+  ggplot() +
+  geom_point(aes(x = mpg01, y = displacement)) +
+  labs(title = "mpg01 vs displacement") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
+
+wg <- df %>%
+  ggplot() +
+  geom_point(aes(x = mpg01, y = weight)) +
+  labs(title = "mpg01 vs weight") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
+
+acl <- df %>%
+  ggplot() +
+  geom_point(aes(x = mpg01, y = acceleration)) +
+  labs(title = "mpg01 vs acceleration") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
+
+require(ggridges)
+
+cyl <- df %>%
+  ggplot() +
+  geom_density_ridges(aes(x = cylinders, y = as.factor(mpg01))) +
+  theme_minimal() +
+  labs(title = "Density Plot of Cylinders vs mpg01",
+       x = "Cylinders",
+       y = "mpg01") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14)) +
+  coord_fixed()
+
+scat <- cowplot::plot_grid(hp, dp, wg, acl, nrow = 2, ncol = 2, rel_widths = c(0.5, 0.5), rel_heights = c(0.5, 0.5))
+den <- cowplot::plot_grid(scat, cyl, nrow = 2, ncol = 1, rel_heights = c(0.5))
+
+den
+```
+
+We can see a semblance of linear relationships between `mpg01` and the top four variables. When we compare `mpg01` to `cylinders`, we see that there appears to be a heavy concentration of high `mpg` vehicles with only 4 cylinders, whereas low `mpg` vehicles (a `mpg01` = 0) appear to be concentrated at 6 or 8 cylinders.                   
+
+Before we run the model, we first split the data into training and testing datasets using the `caret` library.
+
+```{r}
+set.seed(123)
+ti <- caret::createDataPartition(df$mpg01, p = 0.75, list = FALSE)
+
+train_data = df[ti, ]
+test_data = df[-ti, ]
+```
+
+```{r, echo=FALSE}
+options(scipen = 999)
+```
+
+
+```{r}
+log_model <- glm(mpg01 ~ cylinders + displacement + horsepower + weight + acceleration, 
+                 data = train_data, family = "binomial")
+summary(log_model)
+```
+
+With our data split into training and testing data sets, we see that `displacement` and `horsepower` are significant variables (using a 5% level of significance). Variables like `weight` and `cylinders` provide some value, but are not statistically significant at a reasonable level, and `acceleration` provides no value.                         
+
+```{r}
+test_data$pred_mpg01 <- predict(log_model, newdata = test_data, type = "response")
+
+test_data %>%
+  ggplot() +
+  geom_point(aes(x = mpg01, y = pred_mpg01))
+
+test_data <- test_data %>%
+  dplyr::mutate(pred_binary = ifelse(pred_mpg01 >= 0.5, 1, 0))
+
+acc <- mean(test_data$mpg01 == test_data$pred_binary)
+table(test_data$mpg01, test_data$pred_binary)
+```
+
+By running a confusion matrix on the predicted `mpg01` probabilities, we can see that `r round(acc * 100, digits = 1)` of the predictions were correct. The greatest error occurs when the `mpg01` = 0 in reality, but was predicted to be greater than 1.                         
+
+```{r}
+require(FNN)
+
+mpg_train <- train_data %>%
+  dplyr::select(cylinders, displacement, horsepower, weight, acceleration)
+mpg_test <- test_data %>%
+  dplyr::select(cylinders, displacement, horsepower, weight, acceleration)
+
+train_label <- train_data %>%
+  dplyr::select(mpg01)
+test_label <- test_data %>%
+  dplyr::select(mpg01)
+
+knn_acc <- list()
+
+for (z in 1:150) {
+  knn_model <- knn(train = mpg_train, test = mpg_test, cl = train_data$mpg01, k = z)
+  knn_table <- table(knn_model, test_data$mpg01)
+  k_a <- sum(diag(knn_table))/ sum(knn_table)
+  k_df <- data.frame(k_a, z)
+  colnames(k_df) <- c("accuracy", "k")
+  
+  knn_acc[[z]] <- k_df
+  
+  print(z)
+}
+
+knn_acc <- dplyr::bind_rows(knn_acc) %>%
+  # dplyr::mutate(order = row_number()) %>%
+  arrange(desc(accuracy))
+
+knn_acc %>%
+  ggplot() +
+  geom_line(aes(x = k, y = accuracy), col = "red") +
+  labs(title = "Accuracy by K value") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
+```
+
+We see that the accuracy values oscillate pretty heavily between 82% and 86%. I suspect that one of the major reasons that the graph is so scattered and up-and-down has to do with the limited testing and training datasets, with only 294 rows in the training dataset.
+
+
