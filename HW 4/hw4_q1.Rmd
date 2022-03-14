@@ -1,0 +1,129 @@
+---
+title: "HW 4 Q1"
+author: "Ben Howell"
+date: "3/13/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = TRUE,
+                      fig.width = 6,
+                      fig.height = 4)
+```
+
+# Question 5 
+
+```{r, message=FALSE, warning=FALSE}
+require(tidyverse)
+require(ISLR2)
+
+df <- Default %>%
+  dplyr::mutate(default_mode = ifelse(default == "No", 
+                                      0, 1))
+```
+
+```{r}
+set.seed(132)
+```
+
+```{r}
+model1 <- glm(default_mode ~ income + balance, 
+              data = df, family = "binomial")
+
+summary(model1)
+```
+
+# Model 1 Approach
+
+```{r}
+s <- c(0.9, 0.8, 0.7, 0.5)
+
+table(df$default)
+# default rate of ~ 3.33%
+
+for (y in s) {
+  split <- sort(sample(nrow(df), nrow(df) * y))
+  
+  train <- df[split, ]
+  test <- df[-split, ]
+  
+  model2 <- glm(default ~ income + balance, data = train, 
+                family = "binomial")
+  
+  pred <- predict.glm(object = model2, newdata = test, 
+                      type = "response")
+  
+  pred <- data.frame(pred) %>%
+    # 1 = default 
+    # 0 = doesn't default
+    dplyr::mutate(default_binary = ifelse(pred > 0.5, 
+                                          1, 0))
+  
+  test <- test %>%
+    dplyr::mutate(order = row_number()) %>%
+    left_join(pred %>%
+                dplyr::mutate(order = row_number()), 
+              by = c("order"))
+  
+  def_table <- table(test$default_mode, test$default_binary)
+  
+  acc <- scales::percent(sum(diag(def_table) / sum(def_table)), 
+                         accuracy = 0.1)
+  
+  mess <- paste0("For a train/test split of ", y, " and ", 1 - y, 
+                 " the model has an accuracy of ", acc, "!")
+  print(mess)
+}
+```
+
+# Dummy Variable Approach
+
+```{r}
+s <- c(0.9, 0.8, 0.7, 0.5)
+
+table(df$default)
+# default rate of ~ 3.33%
+
+df <- df %>%
+  dplyr::mutate(is_student = ifelse(student == "Yes", 1, 0))
+
+for (y in s) {
+  split <- sort(sample(nrow(df), nrow(df) * y))
+  
+  train <- df[split, ]
+  test <- df[-split, ]
+  
+  model2 <- glm(default ~ income + balance + is_student, data = train, 
+                family = "binomial")
+  
+  pred <- predict.glm(object = model2, newdata = test, 
+                      type = "response")
+  
+  pred <- data.frame(pred) %>%
+    # 1 = default 
+    # 0 = doesn't default
+    dplyr::mutate(default_binary = ifelse(pred > 0.5, 
+                                          1, 0))
+  
+  test <- test %>%
+    dplyr::mutate(order = row_number()) %>%
+    left_join(pred %>%
+                dplyr::mutate(order = row_number()), 
+              by = c("order"))
+  
+  def_table <- table(test$default_mode, test$default_binary)
+  
+  acc <- scales::percent(sum(diag(def_table) / sum(def_table)), 
+                         accuracy = 0.1)
+  
+  mess <- paste0("Train: ", y, "; Test: ", 1 - y, 
+                 " + a student dummy variable, the model has an accuracy of ", 
+                 acc, "!")
+  print(mess)
+}
+```
+
+It's hard to tell for certain, but it appears that the accuracy of the model slightly improves with the inclusion of the student dummy variable. Using the dummy variable, plus a 90/10 train/test split produced an accuracy rate of 97.6%, the highest of all our iterations. Overall, each of the iterations was around the 97% accuracy rate, with slight variations in each direction.
+
+
