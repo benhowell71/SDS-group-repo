@@ -1,0 +1,10 @@
+---
+title: "HW 4 Q1"
+author: "Ben Howell"
+date: "3/13/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
