@@ -6,5 +6,121 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = TRUE,
+                      fig.width = 6,
+                      fig.height = 4)
 ```
+
+# Question 5 
+
+```{r, message=FALSE, warning=FALSE}
+require(tidyverse)
+require(ISLR2)
+
+df <- Default %>%
+  dplyr::mutate(default_mode = ifelse(default == "No", 
+                                      0, 1))
+```
+
+```{r}
+set.seed(132)
+```
+
+```{r}
+model1 <- glm(default_mode ~ income + balance, 
+              data = df, family = "binomial")
+
+summary(model1)
+```
+
+```{r}
+s <- c(0.9, 0.8, 0.7, 0.5)
+
+table(df$default)
+# default rate of ~ 3.33%
+
+for (y in s) {
+  split <- sort(sample(nrow(df), nrow(df) * y))
+  
+  train <- df[split, ]
+  test <- df[-split, ]
+  
+  model2 <- glm(default ~ income + balance, data = train, 
+                family = "binomial")
+  
+  pred <- predict.glm(object = model2, newdata = test, 
+                      type = "response")
+  
+  pred <- data.frame(pred) %>%
+    # 1 = default 
+    # 0 = doesn't default
+    dplyr::mutate(default_binary = ifelse(pred > 0.5, 
+                                          1, 0))
+  
+  test <- test %>%
+    dplyr::mutate(order = row_number()) %>%
+    left_join(pred %>%
+                dplyr::mutate(order = row_number()), 
+              by = c("order"))
+  
+  def_table <- table(test$default_mode, test$default_binary)
+  
+  acc <- scales::percent(sum(diag(def_table) / sum(def_table)), 
+                         accuracy = 0.1)
+  
+  mess <- paste0("For a train/test split of ", y, " and ", 1 - y, 
+                 " the model has an accuracy of ", acc, "!")
+  print(mess)
+}
+```
+
+# Using Dummy Variable
+
+```{r}
+s <- c(0.9, 0.8, 0.7, 0.5)
+
+table(df$default)
+# default rate of ~ 3.33%
+
+df <- df %>%
+  dplyr::mutate(is_student = ifelse(student == "Yes", 1, 0))
+
+for (y in s) {
+  split <- sort(sample(nrow(df), nrow(df) * y))
+  
+  train <- df[split, ]
+  test <- df[-split, ]
+  
+  model2 <- glm(default ~ income + balance + is_student, data = train, 
+                family = "binomial")
+  
+  pred <- predict.glm(object = model2, newdata = test, 
+                      type = "response")
+  
+  pred <- data.frame(pred) %>%
+    # 1 = default 
+    # 0 = doesn't default
+    dplyr::mutate(default_binary = ifelse(pred > 0.5, 
+                                          1, 0))
+  
+  test <- test %>%
+    dplyr::mutate(order = row_number()) %>%
+    left_join(pred %>%
+                dplyr::mutate(order = row_number()), 
+              by = c("order"))
+  
+  def_table <- table(test$default_mode, test$default_binary)
+  
+  acc <- scales::percent(sum(diag(def_table) / sum(def_table)), 
+                         accuracy = 0.1)
+  
+  mess <- paste0("For a train/test split of ", y, " and ", 1 - y, 
+                 " + a student dummy variable,", "\n",
+                 "the model has an accuracy of ", 
+                 acc, "!")
+  print(mess)
+}
+```
+
+
