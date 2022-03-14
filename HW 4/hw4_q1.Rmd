@@ -34,6 +34,8 @@ model1 <- glm(default_mode ~ income + balance,
 summary(model1)
 ```
 
+# Model 1 Approach
+
 ```{r}
 s <- c(0.9, 0.8, 0.7, 0.5)
 
@@ -75,7 +77,7 @@ for (y in s) {
 }
 ```
 
-# Using Dummy Variable
+# Dummy Variable Approach
 
 ```{r}
 s <- c(0.9, 0.8, 0.7, 0.5)
@@ -115,12 +117,13 @@ for (y in s) {
   acc <- scales::percent(sum(diag(def_table) / sum(def_table)), 
                          accuracy = 0.1)
   
-  mess <- paste0("For a train/test split of ", y, " and ", 1 - y, 
-                 " + a student dummy variable,", "\n",
-                 "the model has an accuracy of ", 
+  mess <- paste0("Train: ", y, "; Test: ", 1 - y, 
+                 " + a student dummy variable, the model has an accuracy of ", 
                  acc, "!")
   print(mess)
 }
 ```
+
+It's hard to tell for certain, but it appears that the accuracy of the model slightly improves with the inclusion of the student dummy variable. Using the dummy variable, plus a 90/10 train/test split produced an accuracy rate of 97.6%, the highest of all our iterations. Overall, each of the iterations was around the 97% accuracy rate, with slight variations in each direction.
 
 
