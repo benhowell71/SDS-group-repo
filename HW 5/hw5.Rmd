@@ -1,0 +1,53 @@
+---
+title: "HW 5 Q2"
+author: "Ben Howell"
+date: "3/24/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = TRUE,
+                      fig.width = 6,
+                      fig.height = 4)
+```
+
+```{r}
+require(tidyverse)
+require(janitor)
+require(purrr)
+require()
+require(ggthemes)
+
+# generate p = 20, n = 1000
+
+set.seed(123)
+
+df <- data.frame(replicate(20, rnorm(n = 1000, mean = 15, sd = 3)))
+df <- df %>%
+  clean_names()
+
+df <- df %>%
+  dplyr::mutate(y = ifelse(rowSums(.) < 320, 
+                           rnorm(1, mean = 5, sd = 1), 0) * rowSums(.) +
+                  rnorm(1000, mean = 100, sd = 10))
+  # if the rowSum is low, that total gets multiplied by a random number drawn from a distribution with a mean = 5
+  # and a standard deviation of 1, otherwise it gets multiplied by 0
+  # each observation then gets the error added to it, which is a number from the distribution where mean = 100/sd = 10
+```
+
+```{r}
+train <- sample(nrow(df), 100)
+x_train <- df[train, -21]
+y_train <- df[train, 21]
+
+x_test <- df[-train, -21]
+y_test <- df[-train, 21]
+```
+
+```{r}
+reg
+```
+
+
+
