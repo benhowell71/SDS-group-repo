@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE,
 require(tidyverse)
 require(janitor)
 require(purrr)
-require()
+require(leaps)
 require(ggthemes)
 
 # generate p = 20, n = 1000
@@ -38,16 +38,87 @@ df <- df %>%
 
 ```{r}
 train <- sample(nrow(df), 100)
-x_train <- df[train, -21]
+x_train <- df[train,]
 y_train <- df[train, 21]
 
-x_test <- df[-train, -21]
+x_test <- df[-train,]
 y_test <- df[-train, 21]
 ```
 
 ```{r}
-reg
+model <- regsubsets(y ~ ., data = x_test, nvmax = 20)
 ```
+
+```{r}
+sum <- summary(model)
+names(sum)
+
+sum$rsq
+
+train_mat <- model.matrix(y ~ ., data = x_train)
+errors <- rep(NA, 20)
+
+for (i in 1:20) {
+  
+  cf <- coef(model, id = i)
+  pred <- train_mat[, names(cf)]%*%cf
+  errors[i] <- mean((y_train - pred)^2)
+  
+  # print(i)
+}
+```
+
+```{r}
+errors %>% 
+  data.frame() %>% 
+  clean_names() %>%
+  mutate(predictors = row_number()) %>%
+  ggplot() +
+  geom_point(aes(x = predictors, y = x)) +
+  geom_line(aes(x = predictors, y = x)) +
+  labs(title = "MSE by # of Predictors on Training Set")
+```
+
+```{r}
+test_nat <- model.matrix(y ~ ., data = x_test)
+test_errors <- rep(NA, 20)
+
+for (i in 1:20) {
+  
+  cf <- coef(model, id = i)
+  pred <- test_nat[, names(cf)]%*%cf
+  test_errors[i] <- mean((y_test - pred)^2)
+  
+  # print(i)
+}
+```
+
+```{r}
+test_errors %>% 
+  data.frame() %>% 
+  clean_names() %>%
+  mutate(predictors = row_number()) %>%
+  ggplot() +
+  geom_point(aes(x = predictors, y = x)) +
+  geom_line(aes(x = predictors, y = x)) +
+  labs(title = "MSE by # of Predictors on Test Set")
+```
+
+```{r}
+n <- which.min(test_errors)
+print(paste0("The test set's MSE is minimized at n = ", n))
+```
+
+It's interesting to see that the test set's MSE was minimized at lots of predictors even at times being minimized at the highest number of predictors. It's interesting because the training set was minimized at n = 18, rather than n = 20. However, due to the extreme randomness of the simulated data, I believe that explains most of the contradiction there, and some of the weird nature of these results.                       
+
+```{r}
+coef(model, id = n)
+```
+
+```{r}
+hist(df$y)
+```
+
 
 
 
