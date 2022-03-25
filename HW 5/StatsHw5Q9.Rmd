@@ -1,0 +1,91 @@
+---
+title: "Homework 5, Question 9"
+author: "Matthew Bradley, Ben Howell, Hayley Zorkic, Ayanna Fisher"
+date: "3/24/2022"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 9
+
+### a:
+
+```{r}
+set.seed(2)
+library(ISLR2)
+data(College)
+
+sample_size <- floor(0.75 * nrow(College))
+
+train_index <- sample(seq_len(nrow(College)), size = sample_size)
+College_train <- College[train_index,]
+College_test <- College[-train_index,]
+
+```
+
+### b:
+
+```{r}
+
+model <- lm(Apps~., data = College_train)
+mean((College_test$Apps - predict.lm(model,College_test))^2)
+
+
+```
+Our test error for the linear model is 1,287,764, which is very high.
+
+### c:
+
+```{r}
+library(glmnet)
+
+lamdas <- cv.glmnet(x = data.matrix(College_train[-2]), y = College_train$Apps, alpha = 0)
+bestlam <- lamdas$lambda.min
+bestlam
+ 
+ridge <- glmnet(x = data.matrix(College_train[-2]), y = College_train$Apps, nlambda = round(bestlam), alpha = 0)
+ridge.pred <- predict(ridge, newx = data.matrix(College_test[-2]))
+mean((College_test$Apps - ridge.pred)^2)
+
+```
+Our test error for the ridge model is 5,519,040, which is even higher than the linear model.
+
+### d:
+
+```{r}
+
+lamdas <- cv.glmnet(data.matrix(College_train[-2]), y = College_train$Apps, alpha = 1)
+bestlam <- lamdas$lambda.min
+bestlam
+
+lasso <- glmnet(x = data.matrix(College_train[-2]), y = College_train$Apps, alpha = 1, nlambda = round(bestlam))
+lasso.pred <- predict(lasso, newx = data.matrix(College_test[-2]))
+mean((College_test$Apps - lasso.pred)^2)
+
+coef(lasso, s =2)
+
+```
+The test error for the lasso model is 5,573,200, which is similar to our error in the ridge model. All 17 of the coefficients are nonzero.
+
+### e:
+```{r}
+set.seed(1)
+library(pls)
+pcr.fit <- pcr(Apps ~ ., data = College_train , scale = TRUE , validation = "CV")
+summary(pcr.fit)
+pcr.pred <- predict(pcr.fit , College_test, ncomp = 17)
+mean ((pcr.pred - College_test$Apps)^2)
+
+```
+The test error in the pcr model is 1,287,764, which is similar to the linear regression model. The M selected was 17 (all components were considered).
+
+### g:
+
+All of the test errors were large (in the millions). The linear model and PCR had the lowest errors while the ridge and lasso models had the highest errors. We cannot predict the number of apps received very accurately because the errors in the models are high. 
+
