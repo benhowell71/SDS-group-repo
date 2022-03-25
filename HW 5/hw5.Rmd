@@ -1,0 +1,174 @@
+---
+title: "HW 5 Q2"
+author: "Ben Howell"
+date: "3/24/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = TRUE,
+                      fig.width = 6,
+                      fig.height = 4)
+```
+
+```{r}
+suppressMessages(require(tidyverse))
+suppressMessages(require(janitor))
+suppressMessages(require(purrr))
+suppressMessages(require(leaps))
+suppressMessages(require(ggthemes))
+
+# generate p = 20, n = 1000
+
+set.seed(123)
+
+df <- matrix(rnorm(n = 1000 * 20, mean = 15, sd = 3), 1000, 20)
+b <- rnorm(20)
+b[1] <- 0
+b[5] <- 0
+b[7] <- 0
+b[13] <- 0
+b[17] <- 0
+
+error <- rnorm(1000, mean = 2, sd = 1)
+
+y <- df%*%b + error
+# df <- df %>%
+#   clean_names()
+
+# df <- df %>%
+#   dplyr::mutate(beta = ifelse(rowSums(.) < 320, 
+#                            rnorm(1000, mean = 5, sd = 1), 0),
+#                 y = beta * rowSums(.) +
+#                   rnorm(1000, mean = 100, sd = 10))
+  # if the rowSum is low, that total gets multiplied by a random number drawn from a distribution with a mean = 5
+  # and a standard deviation of 1, otherwise it gets multiplied by 0
+  # each observation then gets the error added to it, which is a number from the distribution where mean = 100/sd = 10
+```
+
+```{r}
+train <- sample(nrow(df), 100)
+x_train <- df[train,]
+y_train <- y[train]
+
+x_test <- df[-train,]
+y_test <- y[-train]
+```
+
+```{r}
+train <- data.frame(x_train, y_train)
+test <- data.frame(x_test, y_test)
+model <- regsubsets(y_train ~ ., data = train, nvmax = 20)
+tmat <- model.matrix(y_train ~., data = train, nvmax = 20)
+
+err <- rep(NA, 20)
+
+for (i in 1:20) {
+
+  cf <- coef(model, id = i)
+  pred <- tmat[, names(cf)]%*%cf
+  err[i] <- mean((y_train - pred)^2)
+
+  # print(i)
+}
+```
+
+```{r}
+# sum <- summary(model)
+# names(sum)
+# 
+# sum$rsq
+# 
+# train_mat <- model.matrix(y ~ ., data = x_train)
+# errors <- rep(NA, 20)
+# 
+# for (i in 1:20) {
+#   
+#   cf <- coef(model, id = i)
+#   pred <- train_mat[, names(cf)]%*%cf
+#   errors[i] <- mean((y_train - pred)^2)
+#   
+#   # print(i)
+# }
+```
+
+```{r}
+err %>% 
+  data.frame() %>% 
+  clean_names() %>%
+  mutate(predictors = row_number()) %>%
+  ggplot() +
+  geom_point(aes(x = predictors, y = x)) +
+  geom_line(aes(x = predictors, y = x)) +
+  labs(title = "MSE by # of Predictors on Training Set")
+```
+
+```{r}
+test_nat <- model.matrix(y_test ~ ., data = test)
+test_errors <- rep(NA, 20)
+
+for (i in 1:20) {
+  
+  cf <- coef(model, id = i)
+  pred <- test_nat[, names(cf)]%*%cf
+  test_errors[i] <- mean((y_test - pred)^2)
+  
+  # print(i)
+}
+```
+
+```{r}
+test_errors %>% 
+  data.frame() %>% 
+  clean_names() %>%
+  mutate(predictors = row_number()) %>%
+  ggplot() +
+  geom_point(aes(x = predictors, y = x)) +
+  geom_line(aes(x = predictors, y = x)) +
+  labs(title = "MSE by # of Predictors on Test Set")
+```
+
+```{r}
+n <- which.min(test_errors)
+print(paste0("The test set's MSE is minimized at n = ", n))
+```
+
+The test set MSE was minimized at n = `r n`. While this is close to all the predictors that were possible from the dataset, it was not quite all of them.                   
+
+```{r}
+coef(model, which.min(test_errors))
+```
+
+```{r}
+print(b)
+```
+
+By comparing the coeffiecients that were taken to the `beta` parameter where some were zero-ed out, it appears that many of the zero-ed out `betas` were not deemed to be good predictors for the model.         
+
+Honestly, it's hard to see much of a relationship between the way the data was generated and what the coefficients of the model ended up being.              
+
+```{r}
+val_err <- rep(NA, 20)
+
+df_cols = colnames(df, do.NULL = FALSE, prefix = "X")
+
+for (i in 1:20) {
+    cf <- coef(model, id = i)
+    val_err[i] <- sqrt(sum((b[df_cols %in% names(cf)] - cf[names(cf) %in% df_cols])^2) + sum(b[!(df_cols %in% names(cf))])^2)
+}
+
+val_err %>%
+  data.frame() %>%
+  clean_names() %>%
+  mutate(ord = row_number()) %>%
+  ggplot() +
+  geom_point(aes(x = ord, y = x)) +
+  geom_line(aes(x = ord, y = x)) +
+  labs(x = "# of Predictors", y = "MSE for Coeffs")
+```
+
+The error between estimated coefficients is the lowest at n = `r n`, which happens to be the model that reduced the test MSE the most, indicating that the model that most accuractely estimated the parameters also does the best job of predicting values from the test set.               
+
+
+
