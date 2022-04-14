@@ -1,0 +1,133 @@
+---
+title: "HW 6 Q5"
+author: "Ben Howell"
+date: "4/14/2022"
+output: pdf_document
+---
+
+# 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = TRUE,
+                      fig.width = 6,
+                      fig.height = 4)
+```
+
+```{r}
+suppressMessages(require(tidyverse))
+suppressMessages(require(janitor))
+suppressMessages(require(purrr))
+suppressWarnings(require(leaps))
+suppressMessages(require(ggthemes))
+suppressMessages(require(ISLR2))
+suppressMessages(require(randomForest))
+suppressMessages(require(gbm))
+suppressMessages(require(ggthemes))
+# generate p = 20, n = 1000
+
+set.seed(123)
+
+df <- Hitters %>%
+  dplyr::filter(! is.na(Salary)) %>%
+  dplyr::mutate(
+    log_salary = log(Salary)
+  ) %>%
+  dplyr::select(-c(Salary)) # %>%
+  # rownames_to_column("player_name")
+
+train <- df[1:200, ]
+test <- df[201:nrow(df), ]
+
+shrk <- seq(0.001, 1, by = 0.005)
+
+lst <- list()
+n <- 0
+
+for (y in shrk) {
+  # print(y)
+  
+  n <- n + 1
+  
+  mod <- gbm(log_salary ~ ., 
+             data = train,
+             shrinkage = shrk, 
+             n.trees = 1000,
+             distribution = "gaussian")
+  
+  train$pred_sal <- predict(mod, train, n.trees = 1000)
+  test$pred_sal <- predict(mod, test, n.trees = 1000)
+  
+  mse <- mean((train$log_salary - train$pred_sal)^2)
+  tmse <- mean((test$log_salary - test$pred_sal)^2)
+  
+  m <- data.frame("shrinkage" = y, 
+                  "MSE" = mse,
+                  "tMSE" = tmse)
+  
+  lst[[n]] <- m
+  
+  print(paste0(scales::percent(n / length(shrk)), " of models tested."))
+  
+  test <- test %>%
+    dplyr::select(-c(pred_sal))
+  # took me to long to figure out that this was being used in future models past the first on bc I forgot to remove the column
+  train <- train %>%
+    dplyr::select(-c(pred_sal))
+}
+
+res <- dplyr::bind_rows(lst)
+
+res %>%
+  ggplot() +
+  geom_point(aes(x = shrinkage, y = MSE, color = "training")) +
+  geom_line(aes(x = shrinkage, y = MSE, color = "training")) +
+  geom_point(aes(x = shrinkage, y = tMSE, color = "test")) +
+  geom_line(aes(x = shrinkage, y = tMSE, color = "test")) +
+  scale_color_colorblind() +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+
+```{r}
+ml <- lm(log_salary ~ ., 
+         data = train)
+test$lm_sal <- predict(ml, newdata = test)
+
+reg_m <- regsubsets(log_salary ~.,
+                    data = train,
+                    method = "exhaustive")
+# summary(reg_m)
+five_m <- glm(log_salary ~ .,
+              data = train %>%
+                dplyr::select(log_salary, AtBat, Hits, Walks, Years, PutOuts))
+test$sub_sal <- predict(five_m, newdata = test)
+
+simple_mse <- mean((test$log_salary - test$lm_sal)^2)
+subset_mse <- mean((test$log_salary - test$sub_sal)^2)
+```
+
+I tried both a simple linear regression model and a linear regression with the five most important variables that I determined through an exhaustive search. The smallest MSE of the test dataset was `r round(min(res$tMSE), 3)`, which was significantly lower than the simple MSE of `r round(simple_mse, 3)` and the subset MSE of `r round(subset_mse, 3)`.                  
+
+```{r}
+summary.gbm(mod)
+```
+
+Some of the most important variables are ABs, Walks, Hits, RBI over the course of a career, which was interesting to see that those contributions were valued over the performance in their season.             
+
+```{r}
+bag_mod <- randomForest(log_salary ~ ., 
+                        data = train,
+                        mtry = ncol(train) - 1,
+                        ntree = 500,
+                        importance = TRUE)
+
+test$bag_pred <- predict(bag_mod, test)
+
+bag_mse <- mean((test$log_salary - test$bag_pred)^2)
+varImpPlot(bag_mod)
+```
+
+The bagging MSE of `r round(bag_mse, 3)` is quite a bit lower than the MSE that we got for the GBM using the boosted method, which was certainly interesting to see. Many of the same variables were rated as the most important across the bagging and boosted method, which seems to imply that the bagging method just did a better job of picking out the specific interactions across features.               
+
+
