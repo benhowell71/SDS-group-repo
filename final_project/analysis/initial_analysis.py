@@ -47,6 +47,19 @@ train_x, train_y, test_x, test_y = train_test_split(data_x, data_y, test_size=0.
 
 model = LinearRegression().fit(train_x, test_x)
 
+print(model.intercept_, model.coef_, model.score(train_y, test_y))
+
+print('\n ------------- Model Intercept ------------- \n', sep='')
+print(' ------------- ', model.intercept_, ' -------------', sep='')
+
+print('\n ------------- Model Coefficients ------------- \n', sep='')
+print(' ------------- ', model.coef_, ' -------------', sep='')
+
+print('\n ------------- Model Score ------------- \n', sep='')
+print(' ------------- ', round(model.score(train_y, test_y), 3), ' -------------', sep='')
+
+print('\n \n \n \n \n \n')
+
 r_sq = round(model.score(train_x, test_x), 3)
 print('coefficient of determination training set:', r_sq)
 
@@ -60,12 +73,12 @@ test_data = train_y.join(test_y).reset_index().join(pred)
 
 sns.scatterplot(data=test_data, x = 'rating', y = 'pred_rating', hue = 'pred_rating')
 sns.set(style='whitegrid',)
-plt.show()
+# plt.show()
 
 sns.boxplot(data=test_data, x = 'rating', y = 'pred_rating')
 sns.set(style='whitegrid',)
-plt.show()
+# plt.show()
 
 sns.boxplot(data=test_data, x = 'gender_id', y = 'pred_rating')
 sns.set(style='whitegrid',)
-plt.show()
+# plt.show()
