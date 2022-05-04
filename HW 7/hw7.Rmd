@@ -1,7 +1,7 @@
 ---
 title: "HW 7 Q4"
 author: "Ben Howell"
-date: "3/24/2022"
+date: "5/4/22"
 output: pdf_document
 ---
 
@@ -9,10 +9,120 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE,
                       fig.align = TRUE,
                       fig.width = 6,
-                      fig.height = 4)
+                      fig.height = 4,
+                      message = FALSE,
+                      warning = FALSE)
 ```
 
+# A)              
+
 ```{r}
-rnorm(20, mean = 1, sd = 0)
+set.seed(123)
+
+require(tidyverse)
+require(janitor)
+require(MLmetrics)
+require(LICORS)
+
+df <- data.frame(replicate(50, rnorm(20, mean = rnorm(1, mean = 0), sd = 3))) %>%
+    rbind(data.frame(replicate(50, rnorm(20, mean = rnorm(1, mean = 1), sd = 3)))) %>%
+    rbind(data.frame(replicate(50, rnorm(20, mean = rnorm(1, mean = 2), sd = 3)))) %>%
+    clean_names() %>%
+    dplyr::mutate(class = ifelse(row_number() <= 20, "0", 
+                                 ifelse(row_number() > 20 & row_number() <= 40, "1", "2")))
+
+res <- prcomp(df %>%
+         dplyr::select(-c(class)), 
+       scale. = TRUE)
+
+head(res$x %>%
+       data.frame() %>%
+       dplyr::select(PC1:PC10))
+```
+
+# B)              
+
+```{r}
+res$x %>%
+  data.frame() %>%
+  ggplot() +
+  geom_point(aes(x = PC1, y = PC2, color = df$class)) +
+  stat_ellipse(aes(x = PC1, y = PC2, color = df$class)) +
+  ggthemes::scale_color_colorblind()
+```
+
+# C)              
+
+```{r}
+km <- kmeans(df %>%
+               dplyr::select(-c(class)),
+             3)
+
+print(table(df$class, km$cluster))
+```
+
+The K-Means clustering does a good job of differentiating between the classes that we created. We see that Clusters 0 and 2 got most of their observations assigned to their own cluster, but some of Cluster 1 got split, which will be interesting to keep an eye on. From looking at the plot in part B, that's not super surprising.                           
+
+# D)              
+
+```{r}
+km <- kmeans(df %>%
+               dplyr::select(-c(class)),
+             2)
+
+print(table(df$class, km$cluster))
+```
+
+With `K = 2`, we see that our classes 0 and 2 are distinctly their own thing, while class 1 gets split 50/50 between those two classes. Again, this makes sense from looking at the way the PCA vectors came out.                  
+
+# E)              
+
+```{r}
+km <- kmeans(df %>%
+               dplyr::select(-c(class)),
+             4)
+
+print(table(df$class, km$cluster))
+```
+
+`K = 4` starts to return some interesting results where we begin to see some separation and dispersion among the classes. Class 0 remains undefeated in being its own cluster, but the other two classes get spread more. It's interesting to see that classes 1 got split across 3 different clusters which kinda indicated how that data generated was more dispered itself.                                
+
+# F)              
+
+```{r}
+km <- kmeans(
+  res$x %>%
+    data.frame() %>%
+    dplyr::select(PC1, PC2),
+  3
+)
+
+table(df$class, km$cluster)
+```
+
+It's interesting to see that this approach accuractely classified 92% of the observations, barely below the 93% of the first `K = 3` classifier that we ran in part C. Being able to get that close while using just two inputs for each variable, rather than 50 is quite the improvement and shows how the PCA vectors improved our clustering.
+
+# G)              
+
+```{r}
+km <- scale(df %>%
+                dplyr::select(-c(class))) %>%
+  data.frame() %>%
+  kmeans(
+    centers = 3
+  )
+
+table(df$class, km$cluster)
+```
+
+Interestingly, once we scale the data, we see the most accurate of our `K = 3` classifiers, predicting 95% of the classes properly, which is good to see. Putting everything onto a consistent scale helped out the quality of our data and allowed the model to improve it's ability to classify our generated classes. On the diagnostic plot below, the observations that are mis-classified make sense as they are outliers among their generated class and almost fit within the elipse of another cluster.         
+
+```{r}
+res$x %>%
+  data.frame() %>%
+  ggplot() +
+  geom_point(aes(x = PC1, y = PC2, color = df$class, shape = as.character(km$cluster))) +
+  stat_ellipse(aes(x = PC1, y = PC2, color = df$class)) +
+  ggthemes::scale_color_colorblind()
 ```
 
