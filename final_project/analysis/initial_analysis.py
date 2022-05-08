@@ -44,6 +44,9 @@ movies = items[['movie_title', 'unknown', 'Action', 'Adventure', 'Animation','Ch
 movies['z'] = 1
 moi = pd.DataFrame(data=[[21, 0, 18, 1]], columns=['age', 'gender_id', 'job', 'z']).merge(movies, how='left', on = 'z').dropna()
 
+data = data[data.groupby("item_id")["item_id"].transform("size")>200]
+data = data[data.groupby("user_id")["user_id"].transform("size")>20]
+
 data_x = data[features].drop(columns=['rating'])
 data_y = data[['rating']]
 
