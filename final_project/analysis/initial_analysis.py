@@ -40,6 +40,13 @@ data['gender_id'] = np.where(data.gender == 'M', 0, 1)
 
 features = ['rating', 'age', 'gender_id', 'job', 'unknown', 'Action', 'Adventure', 'Animation','Children', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film_Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci_Fi', 'Thriller', 'War', 'Western']
 
+movies = items[['movie_title', 'unknown', 'Action', 'Adventure', 'Animation','Children', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film_Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci_Fi', 'Thriller', 'War', 'Western']]
+movies['z'] = 1
+moi = pd.DataFrame(data=[[21, 0, 18, 1]], columns=['age', 'gender_id', 'job', 'z']).merge(movies, how='left', on = 'z').dropna()
+
+data = data[data.groupby("item_id")["item_id"].transform("size")>200]
+data = data[data.groupby("user_id")["user_id"].transform("size")>20]
+
 data_x = data[features].drop(columns=['rating'])
 data_y = data[['rating']]
 
@@ -70,6 +77,15 @@ model.coef_
 
 pred = pd.DataFrame(model.predict(train_y), columns=['pred_rating'])
 test_data = train_y.join(test_y).reset_index().join(pred)
+
+# test_data.sort_values(by = 'pred_rating', ascending = False)
+# test_data.groupby([''])
+
+moi['pred'] = model.predict(moi[['age', 'gender_id', 'job', 'unknown', 'Action', 'Adventure', 'Animation','Children', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film_Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci_Fi', 'Thriller', 'War', 'Western']].dropna())
+
+# data['pred_rating'] = model.predict(data[features].drop(columns=['rating']))
+# print("\n Top 10 Movies by Regression Rating: \n \n", data.groupby(['movie_title']).agg({'movie_id': 'count', 'pred_rating': 'mean'}).reset_index().rename(columns={'movie_id': 'n'}).sort_values(by = 'pred_rating', ascending=False).head(10).to_string(index=False), "\n \n")
+print("\n Top 10 Movies by Regression Rating for Ben: \n \n", moi[['movie_title', 'pred']].sort_values(by = 'pred', ascending=False).head(10).to_string(index=False), "\n \n")
 
 sns.scatterplot(data=test_data, x = 'rating', y = 'pred_rating', hue = 'pred_rating')
 sns.set(style='whitegrid',)
